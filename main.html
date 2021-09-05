@@ -10,13 +10,32 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <body>
 	<div class="control-group">
-		<button id="restart">Restart</button>
+		<div>
+			<form id="game-config" onsubmit="return onConfigStart(event)">
+				<div class="config-form-row">
+					<label for="mine-count">Mine Count: </label>
+					<input id="game-config-mind-count" type="number" value="20" />
+				</div>
+				<div class="config-form-row">
+					<label for="grid-dimensions">Board dimensions (10-40): </label>
+					<input id="game-config-grid-dimensions" type="number" value="20" />
+				</div>
+				<div class="config-form-row">
+					<input type="submit" value="Restart" />
+				</div>
+			</form>
+		</div>
 	</div>
 	<div id="board-container"></div>
 </body>
 <style>
 	.control-group {
 		margin: 20px 0;
+	}
+
+	.config-form-row {
+		display: block;
+		margin: 8px 0;
 	}
 
 	.rows {
@@ -48,17 +67,17 @@
 	//   Instead, generate a problem server side and only 
 	//   compare answers when a player makes moves.
 	// ---
-	const ROWS = 20;  // Total rows of the game board.
-	const COLS = 20;  // Total columns of the game board.
-	const MINES = 20; // Total mines to put on the grids.
+	let ROWS = 20;  // Total rows of the game board.
+	let COLS = 20;  // Total columns of the game board.
+	let MINES = 20; // Total mines to put on the grids.
 
 	const EMPTY = 0;  // A grid that has no mine.
 	const MINE = 1; // A grid that has a mine.
 
-	const matrix = []; // The game matrix.
+	let matrix = []; // The game matrix.
 
 	// --- Board states from user move ---
-	const results = []; // The play state matrix.
+	let results = []; // The play state matrix.
 	const gridStates = {
 		UNREVEALED: 0, // A grid has not been revealed by the user.
 		NUMBER: 1,  // A grid is revealed and indicates that some nearby grid has mines.
@@ -283,13 +302,44 @@
 	    }
     }
 
-	function restart() {
+	function restart(mindCount, gridDimensions) {
+		// TODO: These states are better managed as a class.
+		ROWS = gridDimensions;  // Total rows of the game board.
+		COLS = gridDimensions;  // Total columns of the game board.
+		MINES = mindCount; // Total mines to put on the grids.
+
 		destroyExistingGame();
 		initGameMatrix();
 		renderGame();
 	}
 
-	window.onload = restart;
-	document.getElementById('restart').addEventListener('click', restart);
+	window.onload = (evt) => { restart(20,20); };
+
+	function onConfigStart(e) {
+		e.preventDefault();
+		let mindCount = document.getElementById("game-config-mind-count").value;
+		let gridDimensions = document.getElementById("game-config-grid-dimensions").value;
+		try {
+			mindCount = Number.parseInt(mindCount);
+		} catch (e) {
+			return;
+		}
+		try {
+			gridDimensions = Number.parseInt(gridDimensions);
+		} catch (e) {
+			return;
+		}
+
+		if (mindCount >= 0.8 * gridDimensions * gridDimensions) {
+			console.log("Mind count is limited to 0.8 * number of grids.");
+			return;
+		}
+		if (gridDimensions < 10 || gridDimensions > 40) {
+			console.log("Invalid grid dimentions. Let's not get ahead of ourselves.");
+			return;
+		}
+
+		restart(mindCount, gridDimensions);
+	}
 </script>
 </html>
