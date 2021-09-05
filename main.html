@@ -43,7 +43,7 @@
 	// ---
 	const ROWS = 20;  // Total rows of the game board.
 	const COLS = 20;  // Total columns of the game board.
-	const MINES = 100; // Total mines to put on the grids.
+	const MINES = 20; // Total mines to put on the grids.
 
 	const EMPTY = 0;  // A grid that has no mine.
 	const MINE = 1; // A grid that has a mine.
@@ -147,7 +147,9 @@
 
 		// If this is an empty grid with no mines nearby,
 		// search nearby grids until numbered grids are revealed.
-		for (const dydx of DELTA) {
+		// Only 4 directions and not the diagnols should be searched
+		// as a game rule.
+		for (const dydx of DELTA.slice(0, 4)) {
 			const dy = dydx[0];
 			const dx = dydx[1];
 			const y1 = dy + y;
