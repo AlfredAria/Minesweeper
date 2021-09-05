@@ -30,6 +30,7 @@
 		</div>
 	</div>
 	<div id="board-container"></div>
+	<div id="message-box"></div>
 </body>
 <style>
 	#game-config .input-group {
@@ -172,6 +173,9 @@
 		markRedGrid(y, x) {
 			const grid = uiHelpers.getGridElement(y, x);
 			grid.className = grid.className + ' red';
+		},
+		displayMessage(message) {
+			document.getElementById('message-box').innerHTML = message;
 		}
 	}
 
@@ -223,6 +227,27 @@
 
 	}
 
+	// If all the grids that are not minds have been revealed,
+	// then consider user wins the game.
+	function checkWinCondition() {
+		let count = 0;
+		for (let y = 0; y < ROWS; y ++) {
+			for (let x = 0; x < COLS; x ++) {
+				if (matrix[y][x] !== MINE) {
+					if (results[y][x].state === gridStates.UNREVEALED) {
+						count ++;
+					}
+				}
+			}
+		}
+		if (count === 0) {
+			uiHelpers.displayMessage('Win!');
+			gameBoard.disable();
+		} else {
+			uiHelpers.displayMessage(`${count} grids to go.`);
+		}
+	}
+
 	function reviewAllMines(rowClicked, colClicked) {
 		results[rowClicked][colClicked].state = gridStates.CROSS;
 		uiHelpers.setGridDisplayContent(rowClicked, colClicked, 'X');
@@ -249,15 +274,15 @@
 
 		switch(matrix[rowNum][colNum]) {
 			case MINE:
+				uiHelpers.displayMessage(`Player clicked on grid ${rowNum},${colNum} which is a mine.`);
 				reviewAllMines(rowNum, colNum);
-				console.log(`Player clicked on grid ${rowNum},${colNum} which is a mine.`);
 				gameBoard.disable();
 				break;
 
 			default:
 			case EMPTY:
-				console.log(`Player clicked on grid ${rowNum},${colNum} which is not a mine.`);
 				revealNonMineGrids(rowNum, colNum);
+				checkWinCondition();
 				break;
 		}
 	}
@@ -306,6 +331,7 @@
 		ROWS = gridDimensions;  // Total rows of the game board.
 		COLS = gridDimensions;  // Total columns of the game board.
 		MINES = mindCount; // Total mines to put on the grids.
+		uiHelpers.displayMessage(`${ROWS * COLS - MINES} grids to go.`);
 
 		destroyExistingGame();
 		initGameMatrix();
@@ -330,11 +356,11 @@
 		}
 
 		if (mindCount >= 0.8 * gridDimensions * gridDimensions) {
-			console.log("Mind count is limited to 0.8 * number of grids.");
+			uiHelpers.displayMessage("Mind count is limited to 0.8 * number of grids.");
 			return;
 		}
 		if (gridDimensions < 10 || gridDimensions > 40) {
-			console.log("Invalid grid dimentions. Let's not get ahead of ourselves.");
+			uiHelpers.displayMessage("Invalid grid dimentions. Let's not get ahead of ourselves.");
 			return;
 		}
 
