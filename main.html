@@ -1,0 +1,131 @@
+<!doctype html>
+<!-- 
+	Mine-swap game boilerplates.
+	The user behavior grid update is not implemented yet.
+
+	Author: Alfred Huang
+	Date updated: 2021.9.4
+-->
+<html lang="en-US">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<body>
+	<div id="board-container"></div>
+</body>
+<style>
+	.rows {
+		display: block;
+		white-space: nowrap;
+		height: 20px;
+	}
+
+	.grids {
+		box-sizing: border-box;
+		border: 1px solid black;
+		width: 20px;
+		height: 20px;
+		display: inline-block;
+		white-space: nowrap;
+		text-align: center;
+		text-overflow: hidden;
+		overflow: hidden;		
+	}
+</style>
+<script>
+	const ROWS = 40;  // Total rows of the game board.
+	const COLS = 40;  // Total columns of the game board.
+	const MINES = 20; // Total mines to put on the grids.
+
+	const EMPTY = 0;  // A grid that has no mine.
+	const MINE = 1; // A grid that has a mine.
+
+	const matrix = []; // The game matrix.
+
+	// Shuffling
+	// Reference: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+	function shuffle(array) {
+	  var currentIndex = array.length,  randomIndex;
+
+	  // While there remain elements to shuffle...
+	  while (currentIndex != 0) {
+
+	    // Pick a remaining element...
+	    randomIndex = Math.floor(Math.random() * currentIndex);
+	    currentIndex--;
+
+	    // And swap it with the current element.
+	    [array[currentIndex], array[randomIndex]] = [
+	      array[randomIndex], array[currentIndex]];
+	  }
+
+	  return array;
+	}
+
+	function initGameMatrix() {
+		// Init an empty matrix.
+		for (let y = 0; y < ROWS; y ++) {
+			matrix[y] = [];
+			for (let x = 0; x < COLS; x ++) {
+				matrix[y][x] = EMPTY;
+			}
+		}
+		// Init an index array, shuffle it and use
+		// first MINES entries as random mine blocks.
+		let array = []
+		for (let y = 0; y < ROWS; y ++) {
+			for (let x = 0; x < COLS; x ++) {
+				array.push(y * COLS + x);
+			}
+		}
+		array = shuffle(array);
+		for (let count = 0; count < MINES; count ++) {
+			const row = Math.floor(array[count] / COLS);
+			const col = array[count] % COLS;
+			matrix[row][col] = MINE;
+		}
+	}
+	
+	function handleClickOnGrid(rowNum, colNum) {
+		// TODO: Handle a click on matrix grid by operating on your 
+		// data structure. You may need to use a separate data structure
+		// than matrix to reflect the outcome of user moves. Matrix is
+		// the answer to the mineswap problem.
+		console.log(`Player clicked on grid ${rowNum},${colNum} which is ${
+			matrix[rowNum][colNum] === MINE ? '' : 'NOT '}a mine.`);
+	}
+
+	function renderGame() {
+		const board = document.createElement('div');
+		board.className = "board";
+		for (let r = 0; r < ROWS; r ++) {
+			const row = document.createElement('div');
+			row.className = "rows";
+			for (let c = 0; c < COLS; c ++) {
+				const grid = document.createElement('div');
+				grid.className = "grids";
+				grid.setAttribute('key', 'k' + (r * COLS + c));
+				grid.setAttribute('r', r);
+				grid.setAttribute('c', c);
+				grid.innerHTML = matrix[r][c] === MINE ? 'X' : '';
+				row.appendChild(grid);
+			}
+			board.appendChild(row);
+		}
+		board.onclick = (evt) => {
+			const gridTarget = evt.target;
+			if (!gridTarget.getAttribute("key")) {
+				// Not a click on one of the grids.
+				return;
+			}
+			const rowNum = Number.parseInt(gridTarget.getAttribute('r'));
+			const colNum = Number.parseInt(gridTarget.getAttribute('c'));
+			handleClickOnGrid(rowNum, colNum);
+		};
+		document.getElementById('board-container').appendChild(board);
+	}
+
+	window.onload = (evt) => {
+		initGameMatrix();
+		renderGame();
+	}
+</script>
+</html>
