@@ -123,6 +123,7 @@
 
 		let count = 0;
 
+		// Count number of mines near the grid.
 		for (const dydx of DELTA) {
 			const dy = dydx[0];
 			const dx = dydx[1];
@@ -138,12 +139,14 @@
 		element.innerHTML = count > 0 ? count : '.';
 		results[y][x].state = count > 0 ? gridStates.NUMBER : gridStates.BLANK;
 
+		// This will require user to keep trying to find grids with numbers,
+		// instead of recursively revealing all of them.
 		if (count > 0) {
-			// This will require user to keep trying to find grids with numbers,
-			// instead of recursively revealing all of them.
 			return;
 		}
 
+		// If this is an empty grid with no mines nearby,
+		// search nearby grids until numbered grids are revealed.
 		for (const dydx of DELTA) {
 			const dy = dydx[0];
 			const dx = dydx[1];
