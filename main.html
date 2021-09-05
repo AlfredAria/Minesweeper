@@ -29,16 +29,39 @@
 		text-overflow: hidden;
 		overflow: hidden;		
 	}
+
+	.grids.red {
+		background-color: red;
+	}
 </style>
 <script>
-	const ROWS = 40;  // Total rows of the game board.
-	const COLS = 40;  // Total columns of the game board.
-	const MINES = 20; // Total mines to put on the grids.
+	// --- Answers for this game ---
+	// --- TODO: 
+	//   Players can see the answer by debugging rightaway.
+	//   Instead, generate a problem server side and only 
+	//   compare answers when a player makes moves.
+	// ---
+	const ROWS = 20;  // Total rows of the game board.
+	const COLS = 20;  // Total columns of the game board.
+	const MINES = 100; // Total mines to put on the grids.
 
 	const EMPTY = 0;  // A grid that has no mine.
 	const MINE = 1; // A grid that has a mine.
 
 	const matrix = []; // The game matrix.
+
+	// --- Board states from user move ---
+	const results = []; // The play state matrix.
+	const gridStates = {
+		UNREVEALED: 0, // A grid has not been revealed by the user.
+		NUMBER: 1,  // A grid is revealed and indicates that some nearby grid has mines.
+					// The grid is displayed as the number that indicates how many mines
+					// are nearby.
+		BLANK: 2,  // A grid is revealed and indicates that there is no mine near this grid.
+		CROSS: 3,  // A grid is revealed and is a mine, which is the result of a player
+				   // lossing a game.
+		LOWER_CROSS: 4, // A grid is revealed when the game reveals all answers to the player.
+	};
 
 	// Shuffling
 	// Reference: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
@@ -61,7 +84,7 @@
 	}
 
 	function initGameMatrix() {
-		// Init an empty matrix.
+		// Init an empty answer matrix.
 		for (let y = 0; y < ROWS; y ++) {
 			matrix[y] = [];
 			for (let x = 0; x < COLS; x ++) {
@@ -82,15 +105,127 @@
 			const col = array[count] % COLS;
 			matrix[row][col] = MINE;
 		}
+
+		// Init an unrevealed state matrix.
+		for (let y = 0; y < ROWS; y ++) {
+			results[y] = [];
+			for (let x = 0; x < COLS; x ++) {
+				results[y][x] = {
+					state: gridStates.UNREVEALED
+				};
+			}
+		}
+	}
+
+	// Recursively set grids to be revealed, if they have not.
+	const DELTA = [[-1, 0],[1, 0],[0, -1],[0, 1],[-1, -1],[1, -1],[-1, 1],[1, 1]];
+	function revealNonMineGrids(element, y, x) {
+
+		let count = 0;
+
+		for (const dydx of DELTA) {
+			const dy = dydx[0];
+			const dx = dydx[1];
+			const y1 = dy + y;
+			const x1 = dx + x;
+			if (y1 < 0 || x1 < 0 || y1 >= ROWS || x1 >= COLS || matrix[y1][x1] !== MINE) {
+				continue;
+			}
+			count++;
+		}
+
+		// Update UI to display a reveaded number or empty slot.
+		element.innerHTML = count > 0 ? count : '.';
+		results[y][x].state = count > 0 ? gridStates.NUMBER : gridStates.BLANK;
+
+		if (count > 0) {
+			// This will require user to keep trying to find grids with numbers,
+			// instead of recursively revealing all of them.
+			return;
+		}
+
+		for (const dydx of DELTA) {
+			const dy = dydx[0];
+			const dx = dydx[1];
+			const y1 = dy + y;
+			const x1 = dx + x;
+			if (y1 < 0 || x1 < 0 || y1 >= ROWS || x1 >= COLS || results[y1][x1].state !== gridStates.UNREVEALED) {
+				continue;
+			}
+			// Mine grids will not be revealed.
+			if (matrix[y1][x1] === MINE) {
+				continue;
+			}
+			// Select the unique grid in the matrix and modify its view.
+			const nearbyElement = document.querySelector(`.grids[key=${'k' + (y1 * COLS + x1)}]`);
+			revealNonMineGrids(nearbyElement, y1, x1);
+		}
+
+	}
+
+	function reviewAllMines(clickedElement, rowClicked, colClicked) {
+		results[rowClicked][colClicked].state = gridStates.CROSS;
+		renderGrid(clickedElement, rowClicked, colClicked)
+		clickedElement.className = clickedElement.className + ' red';
+		for (let y = 0; y < ROWS; y ++) {
+			for (let x = 0; x < COLS; x ++) {
+				if (y === rowClicked && x === colClicked) {
+					continue;
+				}
+				if (matrix[y][x] === MINE) {
+					results[y][x].state = gridStates.LOWER_CROSS;
+					const changedElement = document.querySelector(`.grids[key=${'k' + (y * COLS + x)}]`);
+					renderGrid(changedElement, y, x);
+				}
+			}
+		}
 	}
 	
-	function handleClickOnGrid(rowNum, colNum) {
-		// TODO: Handle a click on matrix grid by operating on your 
-		// data structure. You may need to use a separate data structure
-		// than matrix to reflect the outcome of user moves. Matrix is
-		// the answer to the mineswap problem.
-		console.log(`Player clicked on grid ${rowNum},${colNum} which is ${
-			matrix[rowNum][colNum] === MINE ? '' : 'NOT '}a mine.`);
+	function handleClickOnGrid(element, rowNum, colNum) {
+
+		if (results[rowNum][colNum].state !== gridStates.UNREVEALED) {
+			// Do nothing if the grid already has the answer.
+			return;
+		}
+
+		switch(matrix[rowNum][colNum]) {
+			case MINE:
+				reviewAllMines(element, rowNum, colNum);
+				console.log(`Player clicked on grid ${rowNum},${colNum} which is a mine.`);
+				// TODO: Explode.
+				break;
+
+			default:
+			case EMPTY:
+				console.log(`Player clicked on grid ${rowNum},${colNum} which is not a mine.`);
+				revealNonMineGrids(element, rowNum, colNum);
+				break;
+		}
+	}
+
+	function renderGrid(element, row, col) {
+		// Code to review answer at start of game play.
+		// element.innerHTML = matrix[row][col] === MINE ? 'X' : '';
+
+		let displayedText = element.innerHTML;
+		switch(results[row][col].state) {
+			case (gridStates.UNREVEALED):
+				displayedText = ' ';
+				break;
+			case (gridStates.BLANK):
+				displayedText = '.';
+				break;
+			case (gridStates.NUMBER):
+				displayedText = element.innerHTML;
+				break;
+			case (gridStates.CROSS):
+				displayedText = 'X';
+				break;
+			case (gridStates.LOWER_CROSS):
+				displayedText = 'x';
+				break;
+		}
+		element.innerHTML = displayedText;
 	}
 
 	function renderGame() {
@@ -105,7 +240,7 @@
 				grid.setAttribute('key', 'k' + (r * COLS + c));
 				grid.setAttribute('r', r);
 				grid.setAttribute('c', c);
-				grid.innerHTML = matrix[r][c] === MINE ? 'X' : '';
+				renderGrid(grid, r, c);
 				row.appendChild(grid);
 			}
 			board.appendChild(row);
@@ -118,7 +253,7 @@
 			}
 			const rowNum = Number.parseInt(gridTarget.getAttribute('r'));
 			const colNum = Number.parseInt(gridTarget.getAttribute('c'));
-			handleClickOnGrid(rowNum, colNum);
+			handleClickOnGrid(gridTarget, rowNum, colNum);
 		};
 		document.getElementById('board-container').appendChild(board);
 	}
