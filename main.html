@@ -28,6 +28,9 @@
 				</div>
 			</form>
 		</div>
+		<div class="labeler">
+			<button id="labeler-button" class="btn btn-secondary">Label Mine</button>
+		</div>
 	</div>
 	<div id="board-container"></div>
 	<div id="message-box"></div>
@@ -59,6 +62,10 @@
 	.grids.red {
 		background-color: red;
 	}
+
+	.grids.yellow {
+		background-color: yellow;
+	}
 </style>
 <script>
 	// --- Answers for this game ---
@@ -74,6 +81,8 @@
 	const EMPTY = 0;  // A grid that has no mine.
 	const MINE = 1; // A grid that has a mine.
 
+	let labelMine = false; // If flag is set to true, a user's click will add a label to the grid.
+
 	let matrix = []; // The game matrix.
 
 	// --- Board states from user move ---
@@ -87,6 +96,8 @@
 		CROSS: 3,  // A grid is revealed and is a mine, which is the result of a player
 				   // lossing a game.
 		LOWER_CROSS: 4, // A grid is revealed when the game reveals all answers to the player.
+
+		MARKED: 5, // A grid can be marked if player thinks this is a mine.
 	};
 
 	let gameBoard;
@@ -145,6 +156,7 @@
 		}
 	}
 
+	// TODO: Use classList.
 	const uiHelpers = {
 		createGridFor(r, c) {
 			const grid = document.createElement('div');
@@ -173,6 +185,14 @@
 		markRedGrid(y, x) {
 			const grid = uiHelpers.getGridElement(y, x);
 			grid.className = grid.className + ' red';
+		},
+		markYellowGrid(y, x) {
+			const grid = uiHelpers.getGridElement(y, x);
+			grid.className = grid.className + ' yellow';
+		},
+		unMarkYellowGrid(y, x) {
+			const grid = uiHelpers.getGridElement(y, x);
+			grid.className = grid.className.replace('yellow', '');
 		},
 		displayMessage(message) {
 			document.getElementById('message-box').innerHTML = message;
@@ -210,6 +230,7 @@
 		// search nearby grids until numbered grids are revealed.
 		// Only 4 directions and not the diagnols should be searched
 		// as a game rule.
+		// The grids marked as mines by user will not be searched.
 		for (const dydx of DELTA.slice(0, 4)) {
 			const dy = dydx[0];
 			const dx = dydx[1];
@@ -261,6 +282,11 @@
 				if (matrix[y][x] === MINE) {
 					results[y][x].state = gridStates.LOWER_CROSS;
 					uiHelpers.setGridDisplayContent(y, x, 'x');
+				} else {
+					if (results[y][x].state === gridStates.MARKED) {
+						// A result is not a mine but has been marked by user.
+						uiHelpers.setGridDisplayContent(y, x, '\\');	
+					}
 				}
 			}
 		}
@@ -287,6 +313,18 @@
 		}
 	}
 
+	function handleLabelMineClickOnGrid(rowNum, colNum) {
+		if (results[rowNum][colNum].state === gridStates.UNREVEALED) {
+			// Label the grid as mine if it is unrevealed and not labeled.
+			results[rowNum][colNum].state = gridStates.MARKED;
+			uiHelpers.markYellowGrid(rowNum, colNum);
+			return;
+		} else if (results[rowNum][colNum].state === gridStates.MARKED) {
+			results[rowNum][colNum].state = gridStates.UNREVEALED;
+			uiHelpers.unMarkYellowGrid(rowNum, colNum);
+		}
+	}
+
 	function renderGame() {
 		gameBoard = new Board();
 		board = gameBoard.element;
@@ -305,7 +343,23 @@
 	function gridIsClicked(evt) {
 		const {rowNum, colNum} = uiHelpers.getClickedGridAttribute(evt.target);
 		if (rowNum >= 0 && colNum >= 0) {
-			handleClickOnGrid(rowNum, colNum);
+			if (!labelMine) {
+				handleClickOnGrid(rowNum, colNum);
+			} else {
+				handleLabelMineClickOnGrid(rowNum, colNum);
+			}
+		}
+	}
+
+	function setLabelMindStatus(evt) {
+
+
+
+		labelMine = !labelMine;
+		if (labelMine) {
+			uiHelpers.displayMessage('Label grids that you think are mines.');
+		} else {
+			uiHelpers.displayMessage('');
 		}
 	}
 
@@ -313,10 +367,12 @@
 		this.element = document.createElement('div');
 		this.element.className = "board";
 		this.element.addEventListener('click', gridIsClicked);
+		document.addEventListener('keydown', setLabelMindStatus);
 	}
 
 	Board.prototype.disable = function() {
 		this.element.removeEventListener('click', gridIsClicked);
+		document.removeEventListener('keydown', setLabelMindStatus);
 	}
 
 	function destroyExistingGame() {
@@ -331,6 +387,7 @@
 		ROWS = gridDimensions;  // Total rows of the game board.
 		COLS = gridDimensions;  // Total columns of the game board.
 		MINES = mindCount; // Total mines to put on the grids.
+		labelMine = false;
 		uiHelpers.displayMessage(`${ROWS * COLS - MINES} grids to go.`);
 
 		destroyExistingGame();
