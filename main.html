@@ -9,9 +9,16 @@
 <html lang="en-US">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <body>
+	<div class="control-group">
+		<button id="restart">Restart</button>
+	</div>
 	<div id="board-container"></div>
 </body>
 <style>
+	.control-group {
+		margin: 20px 0;
+	}
+
 	.rows {
 		display: block;
 		white-space: nowrap;
@@ -62,6 +69,8 @@
 				   // lossing a game.
 		LOWER_CROSS: 4, // A grid is revealed when the game reveals all answers to the player.
 	};
+
+	let gameBoard;
 
 	// Shuffling
 	// Reference: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
@@ -117,10 +126,40 @@
 		}
 	}
 
+	const uiHelpers = {
+		createGridFor(r, c) {
+			const grid = document.createElement('div');
+			grid.className = "grids";
+			grid.setAttribute('key', 'k' + (r * COLS + c));
+			grid.setAttribute('r', r);
+			grid.setAttribute('c', c);
+			grid.innerHTML = '';
+			return grid;
+		},
+		getClickedGridAttribute(element) {
+			if (!element.getAttribute("key")) {
+				// Not a click on one of the grids.
+				return {rowNum: -1, colNum: -1};
+			}
+			const rowNum = Number.parseInt(element.getAttribute('r'));
+			const colNum = Number.parseInt(element.getAttribute('c'));
+			return {rowNum, colNum};
+		},
+		getGridElement(y, x) {
+			return document.querySelector(`.grids[key=${'k' + (y * COLS + x)}]`);
+		},
+		setGridDisplayContent(y, x, content) {
+			uiHelpers.getGridElement(y, x).innerHTML = content;
+		},
+		markRedGrid(y, x) {
+			const grid = uiHelpers.getGridElement(y, x);
+			grid.className = grid.className + ' red';
+		}
+	}
+
 	// Recursively set grids to be revealed, if they have not.
 	const DELTA = [[-1, 0],[1, 0],[0, -1],[0, 1],[-1, -1],[1, -1],[-1, 1],[1, 1]];
-	function revealNonMineGrids(element, y, x) {
-
+	function revealNonMineGrids(y, x) {
 		let count = 0;
 
 		// Count number of mines near the grid.
@@ -136,8 +175,8 @@
 		}
 
 		// Update UI to display a reveaded number or empty slot.
-		element.innerHTML = count > 0 ? count : '.';
 		results[y][x].state = count > 0 ? gridStates.NUMBER : gridStates.BLANK;
+		uiHelpers.setGridDisplayContent(y, x, count ? count : '.');
 
 		// This will require user to keep trying to find grids with numbers,
 		// instead of recursively revealing all of them.
@@ -161,17 +200,16 @@
 			if (matrix[y1][x1] === MINE) {
 				continue;
 			}
-			// Select the unique grid in the matrix and modify its view.
-			const nearbyElement = document.querySelector(`.grids[key=${'k' + (y1 * COLS + x1)}]`);
-			revealNonMineGrids(nearbyElement, y1, x1);
+			revealNonMineGrids(y1, x1);
 		}
 
 	}
 
-	function reviewAllMines(clickedElement, rowClicked, colClicked) {
+	function reviewAllMines(rowClicked, colClicked) {
 		results[rowClicked][colClicked].state = gridStates.CROSS;
-		renderGrid(clickedElement, rowClicked, colClicked)
-		clickedElement.className = clickedElement.className + ' red';
+		uiHelpers.setGridDisplayContent(rowClicked, colClicked, 'X');
+		uiHelpers.markRedGrid(rowClicked, colClicked);
+
 		for (let y = 0; y < ROWS; y ++) {
 			for (let x = 0; x < COLS; x ++) {
 				if (y === rowClicked && x === colClicked) {
@@ -179,15 +217,13 @@
 				}
 				if (matrix[y][x] === MINE) {
 					results[y][x].state = gridStates.LOWER_CROSS;
-					const changedElement = document.querySelector(`.grids[key=${'k' + (y * COLS + x)}]`);
-					renderGrid(changedElement, y, x);
+					uiHelpers.setGridDisplayContent(y, x, 'x');
 				}
 			}
 		}
 	}
 	
-	function handleClickOnGrid(element, rowNum, colNum) {
-
+	function handleClickOnGrid(rowNum, colNum) {
 		if (results[rowNum][colNum].state !== gridStates.UNREVEALED) {
 			// Do nothing if the grid already has the answer.
 			return;
@@ -195,77 +231,65 @@
 
 		switch(matrix[rowNum][colNum]) {
 			case MINE:
-				reviewAllMines(element, rowNum, colNum);
+				reviewAllMines(rowNum, colNum);
 				console.log(`Player clicked on grid ${rowNum},${colNum} which is a mine.`);
-				// TODO: Explode.
+				gameBoard.disable();
 				break;
 
 			default:
 			case EMPTY:
 				console.log(`Player clicked on grid ${rowNum},${colNum} which is not a mine.`);
-				revealNonMineGrids(element, rowNum, colNum);
+				revealNonMineGrids(rowNum, colNum);
 				break;
 		}
-	}
-
-	function renderGrid(element, row, col) {
-		// Code to review answer at start of game play.
-		// element.innerHTML = matrix[row][col] === MINE ? 'X' : '';
-
-		let displayedText = element.innerHTML;
-		switch(results[row][col].state) {
-			case (gridStates.UNREVEALED):
-				displayedText = ' ';
-				break;
-			case (gridStates.BLANK):
-				displayedText = '.';
-				break;
-			case (gridStates.NUMBER):
-				displayedText = element.innerHTML;
-				break;
-			case (gridStates.CROSS):
-				displayedText = 'X';
-				break;
-			case (gridStates.LOWER_CROSS):
-				displayedText = 'x';
-				break;
-		}
-		element.innerHTML = displayedText;
 	}
 
 	function renderGame() {
-		const board = document.createElement('div');
+		gameBoard = new Board();
+		board = gameBoard.element;
 		board.className = "board";
 		for (let r = 0; r < ROWS; r ++) {
 			const row = document.createElement('div');
 			row.className = "rows";
 			for (let c = 0; c < COLS; c ++) {
-				const grid = document.createElement('div');
-				grid.className = "grids";
-				grid.setAttribute('key', 'k' + (r * COLS + c));
-				grid.setAttribute('r', r);
-				grid.setAttribute('c', c);
-				renderGrid(grid, r, c);
-				row.appendChild(grid);
+				row.appendChild(uiHelpers.createGridFor(r, c));
 			}
 			board.appendChild(row);
 		}
-		board.onclick = (evt) => {
-			const gridTarget = evt.target;
-			if (!gridTarget.getAttribute("key")) {
-				// Not a click on one of the grids.
-				return;
-			}
-			const rowNum = Number.parseInt(gridTarget.getAttribute('r'));
-			const colNum = Number.parseInt(gridTarget.getAttribute('c'));
-			handleClickOnGrid(gridTarget, rowNum, colNum);
-		};
 		document.getElementById('board-container').appendChild(board);
 	}
 
-	window.onload = (evt) => {
+	function gridIsClicked(evt) {
+		const {rowNum, colNum} = uiHelpers.getClickedGridAttribute(evt.target);
+		if (rowNum >= 0 && colNum >= 0) {
+			handleClickOnGrid(rowNum, colNum);
+		}
+	}
+
+	function Board() {
+		this.element = document.createElement('div');
+		this.element.className = "board";
+		this.element.addEventListener('click', gridIsClicked);
+	}
+
+	Board.prototype.disable = function() {
+		this.element.removeEventListener('click', gridIsClicked);
+	}
+
+	function destroyExistingGame() {
+		const container = document.getElementById('board-container');
+	    while (container.firstChild) {
+	        container.removeChild(container.firstChild);
+	    }
+    }
+
+	function restart() {
+		destroyExistingGame();
 		initGameMatrix();
 		renderGame();
 	}
+
+	window.onload = restart;
+	document.getElementById('restart').addEventListener('click', restart);
 </script>
 </html>
