@@ -7,21 +7,24 @@
 	Date updated: 2021.9.4
 -->
 <html lang="en-US">
+<head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+</head>
 <body>
 	<div class="control-group">
 		<div>
 			<form id="game-config" onsubmit="return onConfigStart(event)">
-				<div class="config-form-row">
+				<div class="input-group">
 					<label for="mine-count">Mine Count: </label>
 					<input id="game-config-mind-count" type="number" value="20" />
 				</div>
-				<div class="config-form-row">
+				<div class="input-group">
 					<label for="grid-dimensions">Board dimensions (10-40): </label>
 					<input id="game-config-grid-dimensions" type="number" value="20" />
 				</div>
-				<div class="config-form-row">
-					<input type="submit" value="Restart" />
+				<div class="input-group">
+					<input type="submit" value="Restart" class="btn btn-primary"/>
 				</div>
 			</form>
 		</div>
@@ -29,11 +32,7 @@
 	<div id="board-container"></div>
 </body>
 <style>
-	.control-group {
-		margin: 20px 0;
-	}
-
-	.config-form-row {
+	#game-config .input-group {
 		display: block;
 		margin: 8px 0;
 	}
